@@ -3,13 +3,18 @@
 
 #include "framework.h"
 #include "A_Star_Algorithm.h"
+#include "AStar.h"
 
 #define MAX_LOADSTRING 100
+#define WS_GAME (WS_MAXIMIZE | WS_BORDER | WS_POPUP | WS_SYSMENU)
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
+
+//custom
+Astar star(20, 20);
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -97,8 +102,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+  // HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_GAME,
+   //   CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindow(szWindowClass, TEXT("Gals_Panic"), WS_GAME,
+	   0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -123,6 +130,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	static bool flag_s = false;
     switch (message)
     {
     case WM_COMMAND:
@@ -142,15 +150,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+	case WM_LBUTTONDOWN:
+	{
+		POINT click = { LOWORD(lParam) / star.width, HIWORD(lParam) / star.width };
+		if (click.x >= 20 || click.y >= 20) break;
+		if (!flag_s)
+		{
+			if (star.set_map(click.x, click.y, 3))
+			{
+				star.reset_Astarmap();
+				star.set_map(click.x, click.y, 3);
+				flag_s = true;
+			}
+		}
+		else
+		{
+			if (star.set_map(click.x, click.y, 4))
+			{
+				flag_s = false;
+				if (star.Astar_algorithm())
+				{
+					star.set_path(true);
+				}
+				else
+					star.set_path(false);
+			}
+		}
+		InvalidateRect(hWnd, NULL, true);
+
+	}
+		break;
+	case WM_RBUTTONDOWN:
+	{
+		POINT click = { LOWORD(lParam) / star.width, HIWORD(lParam) / star.width };
+		if (click.x >= 20 || click.y >= 20) break;
+		star.set_map(click.x, click.y, 0);
+		InvalidateRect(hWnd, NULL, true);
+	}
+	break;
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+			star.Show_map(hWnd, hdc);
+
+
+
+
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+		star.shutdown();
         PostQuitMessage(0);
         break;
     default:
